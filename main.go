@@ -62,7 +62,7 @@ func createProjectStructure(stack string, needDB bool) {
 
 	// Create frontend and backend structure based on stack
 	if stack == "React Vite + Express" {
-		createReactTemplate()
+		createReactViteTemplate()
 		createExpressTemplate()
 	} else if stack == "Next.js" {
 		createNextJSTemplate()
@@ -70,11 +70,11 @@ func createProjectStructure(stack string, needDB bool) {
 	fmt.Println("Project structure generated!")
 }
 
-// Create React Vite project structure
-func createReactTemplate() {
+// Create React Vite TypeScript project structure
+func createReactViteTemplate() {
 	os.MkdirAll("project/frontend", os.ModePerm)
 
-	// Create package.json for React Vite
+	// Create package.json for React Vite with TypeScript
 	createFile("project/frontend/package.json", `{
   "name": "react-vite-app",
   "version": "1.0.0",
@@ -88,85 +88,162 @@ func createReactTemplate() {
     "react-dom": "^18.0.0"
   },
   "devDependencies": {
-    "vite": "^3.0.0"
+    "vite": "^3.0.0",
+    "typescript": "^4.4.4",
+    "@types/react": "^18.0.0",
+    "@types/react-dom": "^18.0.0"
   }
 }`)
 
-	// Create index.html and basic React files
-	os.MkdirAll("project/frontend/src", os.ModePerm)
-	createFile("project/frontend/src/main.jsx", `
-import React from 'react';
-import ReactDOM from 'react-dom/client';
-import App from './App';
-ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+	// Create tsconfig.json for TypeScript
+	createFile("project/frontend/tsconfig.json", `{
+  "compilerOptions": {
+    "target": "ESNext",
+    "useDefineForClassFields": true,
+    "lib": ["DOM", "DOM.Iterable", "ESNext"],
+    "allowJs": false,
+    "skipLibCheck": true,
+    "esModuleInterop": false,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx"
+  },
+  "include": ["src"]
+}`)
+
+	// Create Vite configuration file
+	createFile("project/frontend/vite.config.ts", `import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+
+export default defineConfig({
+  plugins: [react()]
+})
 `)
 
-	createFile("project/frontend/src/App.jsx", `
-export default function App() {
+	// Create index.html and basic React files
+	os.MkdirAll("project/frontend/src", os.ModePerm)
+	createFile("project/frontend/src/main.tsx", `
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import App from './App'
+import './index.css'
+
+ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+)
+`)
+
+	createFile("project/frontend/src/App.tsx", `
+import { useState } from 'react'
+import './App.css'
+
+function App() {
+	const [count, setCount] = useState(0)
+
 	return (
-		<div>
-			<h1>Welcome to React Vite App</h1>
+		<div className="App">
+			<h1>Welcome to React Vite with TypeScript</h1>
+			<div>
+				<button onClick={() => setCount(count + 1)}>
+					count is {count}
+				</button>
+			</div>
 		</div>
-	);
+	)
+}
+
+export default App
+`)
+
+	createFile("project/frontend/src/index.css", `
+body {
+	margin: 0;
+	font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
 }
 `)
+
 	createFile("project/frontend/index.html", `
 <!DOCTYPE html>
 <html lang="en">
 <head>
 	<meta charset="UTF-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-	<title>React Vite App</title>
+	<title>React Vite + TypeScript</title>
 </head>
 <body>
 	<div id="root"></div>
-	<script type="module" src="/src/main.jsx"></script>
+	<script type="module" src="/src/main.tsx"></script>
 </body>
 </html>
 `)
-	fmt.Println("React Vite frontend created.")
+	fmt.Println("React Vite frontend with TypeScript created.")
 }
 
-// Create Express project structure
+// Create Express TypeScript project structure
 func createExpressTemplate() {
 	os.MkdirAll("project/backend", os.ModePerm)
 
-	// Create package.json for Express
+	// Create package.json for Express with TypeScript
 	createFile("project/backend/package.json", `{
   "name": "express-app",
   "version": "1.0.0",
   "scripts": {
-    "start": "node server.js"
+    "start": "ts-node-dev --respawn --transpile-only src/index.ts"
   },
   "dependencies": {
     "express": "^4.0.0",
-    "cors": "^2.8.5"
+    "@types/express": "^4.17.0"
+  },
+  "devDependencies": {
+    "typescript": "^4.4.4",
+    "ts-node-dev": "^1.1.8"
   }
 }`)
 
-	// Create server.js
-	createFile("project/backend/server.js", `
-const express = require('express');
-const cors = require('cors');
+	// Create tsconfig.json for TypeScript
+	createFile("project/backend/tsconfig.json", `{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "CommonJS",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
+  }
+}`)
+
+	// Correct index.ts (Express entry file)
+	createFile("project/backend/src/index.ts", `
+import express from 'express';
+
 const app = express();
-app.use(cors());
+const port = 3001;
 
 app.get('/', (req, res) => {
-	res.json({ message: 'Welcome to the Express backend!' });
+  res.json({ message: 'Welcome to the Express backend!' });
 });
 
-app.listen(3001, () => {
-	console.log('Server is running on port 3001');
+app.listen(port, () => {
+  console.log('Server is running on port:' ${port});
 });
 `)
-	fmt.Println("Express backend created.")
+
+	fmt.Println("Express backend with TypeScript created.")
 }
 
-// Create Next.js project structure
+// Create Next.js TypeScript project structure
 func createNextJSTemplate() {
 	os.MkdirAll("project/frontend", os.ModePerm)
 
-	// Create package.json for Next.js
+	// Create package.json for Next.js with TypeScript
 	createFile("project/frontend/package.json", `{
   "name": "next-app",
   "version": "1.0.0",
@@ -178,10 +255,13 @@ func createNextJSTemplate() {
   "dependencies": {
     "next": "12.0.0",
     "react": "^18.0.0",
-    "react-dom": "^18.0.0"
+    "react-dom": "^18.0.0",
+    "typescript": "^4.4.4",
+    "@types/react": "^18.0.0",
+    "@types/node": "^17.0.0"
   }
 }`)
-	fmt.Println("Next.js frontend created.")
+	fmt.Println("Next.js frontend with TypeScript created.")
 }
 
 // Set up Prisma and the database
@@ -215,7 +295,7 @@ DATABASE_URL="postgresql://postgres:postgres@localhost:10001/mydb"
 	fmt.Println("Prisma and database setup created.")
 }
 
-// Updated Docker Compose file with PostgreSQL configuration
+// Docker Compose and Dockerfiles
 func createDockerFiles() {
 	// Dockerfile for backend
 	createFile("project/backend/Dockerfile", `
@@ -239,7 +319,7 @@ EXPOSE 3000
 CMD ["npm", "run", "dev"]
 `)
 
-	// Updated Docker Compose file with the provided PostgreSQL configuration
+	// Updated Docker Compose file with PostgreSQL configuration
 	createFile("project/docker-compose.yml", `
 version: "3.9"
 services:
