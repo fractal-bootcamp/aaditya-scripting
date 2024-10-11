@@ -4,12 +4,14 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 )
 
 func main() {
 	stack, needDB := promptForDetails()
 	createProjectStructure(stack, needDB)
+	runInstallations()
 }
 
 // Prompt user for project details
@@ -67,14 +69,15 @@ func createProjectStructure(stack string, needDB bool) {
 	} else if stack == "Next.js" {
 		createNextJSTemplate()
 	}
+	setupAuth() // Set up Firebase authentication
 	fmt.Println("Project structure generated!")
 }
 
-// Create React Vite TypeScript project structure
+// Create React Vite TypeScript project structure with Firebase auth
 func createReactViteTemplate() {
 	os.MkdirAll("project/frontend", os.ModePerm)
 
-	// Create package.json for React Vite with TypeScript
+	// Create package.json for React Vite with TypeScript and Firebase
 	createFile("project/frontend/package.json", `{
   "name": "react-vite-app",
   "version": "1.0.0",
@@ -85,7 +88,8 @@ func createReactViteTemplate() {
   },
   "dependencies": {
     "react": "^18.0.0",
-    "react-dom": "^18.0.0"
+    "react-dom": "^18.0.0",
+    "firebase": "^9.6.1"
   },
   "devDependencies": {
     "vite": "^3.0.0",
@@ -126,72 +130,172 @@ export default defineConfig({
 })
 `)
 
-	// Create index.html and basic React files
-	os.MkdirAll("project/frontend/src", os.ModePerm)
-	createFile("project/frontend/src/main.tsx", `
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import App from './App'
-import './index.css'
+	// Create basic Firebase authentication files
+	createFile("project/frontend/src/firebaseConfig.ts", `
+import { initializeApp } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
 
-ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
-)
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_AUTH_DOMAIN",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_STORAGE_BUCKET",
+  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+  appId: "YOUR_APP_ID"
+};
+
+const app = initializeApp(firebaseConfig);
+export const auth = getAuth(app);
 `)
 
-	createFile("project/frontend/src/App.tsx", `
-import { useState } from 'react'
-import './App.css'
+	createFile("project/frontend/src/Auth.tsx", `
+import React, { useState } from 'react';
+import { auth } from './firebaseConfig';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 
-function App() {
-	const [count, setCount] = useState(0)
+function Auth() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLogin, setIsLogin] = useState(true);
 
-	return (
-		<div className="App">
-			<h1>Welcome to React Vite with TypeScript</h1>
-			<div>
-				<button onClick={() => setCount(count + 1)}>
-					count is {count}
-				</button>
-			</div>
-		</div>
-	)
+  const handleAuth = async () => {
+    try {
+      if (isLogin) {
+        await signInWithEmailAndPassword(auth, email, password);
+        alert('Logged in!');
+      } else {
+        await createUserWithEmailAndPassword(auth, email, password);
+        alert('Account created!');
+      }
+    } catch (error) {
+      alert('Error: ' + error.message);
+    }
+  };
+
+  return (
+    <div>
+      <h2>{isLogin ? 'Login' : 'Sign Up'}</h2>
+      <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
+      <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
+      <button onClick={handleAuth}>{isLogin ? 'Login' : 'Sign Up'}</button>
+      <button onClick={() => setIsLogin(!isLogin)}>Switch to {isLogin ? 'Sign Up' : 'Login'}</button>
+    </div>
+  );
 }
 
-export default App
+export default Auth;
 `)
 
-	createFile("project/frontend/src/index.css", `
-body {
-	margin: 0;
-	font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-}
-`)
-
-	createFile("project/frontend/index.html", `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-	<meta charset="UTF-8" />
-	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-	<title>React Vite + TypeScript</title>
-</head>
-<body>
-	<div id="root"></div>
-	<script type="module" src="/src/main.tsx"></script>
-</body>
-</html>
-`)
-	fmt.Println("React Vite frontend with TypeScript created.")
+	fmt.Println("React Vite frontend with Firebase Authentication created.")
 }
 
-// Create Express TypeScript project structure
+// Create Next.js TypeScript project structure
+func createNextJSTemplate() {
+	os.MkdirAll("project/frontend", os.ModePerm)
+
+	// Create package.json for Next.js with TypeScript and Firebase
+	createFile("project/frontend/package.json", `{
+  "name": "next-app",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "next": "12.0.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "typescript": "^4.4.4",
+    "firebase": "^9.6.1",
+    "@types/react": "^18.0.0",
+    "@types/node": "^17.0.0"
+  }
+}`)
+
+	// Create tsconfig.json for TypeScript
+	createFile("project/frontend/tsconfig.json", `{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "strict": true,
+    "jsx": "preserve",
+    "esModuleInterop": true,
+    "moduleResolution": "Node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "lib": ["DOM", "DOM.Iterable", "ESNext"]
+  },
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx"],
+  "exclude": ["node_modules"]
+}`)
+
+	// Create basic Firebase configuration for Next.js
+	createFile("project/frontend/src/firebaseConfig.ts", `
+import { initializeApp } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
+
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_AUTH_DOMAIN",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_STORAGE_BUCKET",
+  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+  appId: "YOUR_APP_ID"
+};
+
+const app = initializeApp(firebaseConfig);
+export const auth = getAuth(app);
+`)
+
+	// Create index page for Next.js with basic auth integration
+	createFile("project/frontend/pages/index.tsx", `
+import React, { useState } from 'react';
+import { auth } from '../src/firebaseConfig';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+
+const Home = () => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLogin, setIsLogin] = useState(true);
+
+  const handleAuth = async () => {
+    try {
+      if (isLogin) {
+        await signInWithEmailAndPassword(auth, email, password);
+        alert('Logged in!');
+      } else {
+        await createUserWithEmailAndPassword(auth, email, password);
+        alert('Account created!');
+      }
+    } catch (error) {
+      alert('Error: ' + error.message);
+    }
+  };
+
+  return (
+    <div>
+      <h2>{isLogin ? 'Login' : 'Sign Up'}</h2>
+      <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
+      <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
+      <button onClick={handleAuth}>{isLogin ? 'Login' : 'Sign Up'}</button>
+      <button onClick={() => setIsLogin(!isLogin)}>Switch to {isLogin ? 'Sign Up' : 'Login'}</button>
+    </div>
+  );
+};
+
+export default Home;
+`)
+
+	fmt.Println("Next.js frontend with Firebase Authentication created.")
+}
+
+// Create Express TypeScript project structure with JWT Auth
 func createExpressTemplate() {
 	os.MkdirAll("project/backend", os.ModePerm)
 
-	// Create package.json for Express with TypeScript
+	// Create package.json for Express with TypeScript and JWT Auth
 	createFile("project/backend/package.json", `{
   "name": "express-app",
   "version": "1.0.0",
@@ -200,7 +304,9 @@ func createExpressTemplate() {
   },
   "dependencies": {
     "express": "^4.0.0",
-    "@types/express": "^4.17.0"
+    "@types/express": "^4.17.0",
+    "jsonwebtoken": "^8.5.1",
+    "bcryptjs": "^2.4.3"
   },
   "devDependencies": {
     "typescript": "^4.4.4",
@@ -220,48 +326,47 @@ func createExpressTemplate() {
   }
 }`)
 
-	// Correct index.ts (Express entry file)
+	// Create index.ts (Express entry file) with JWT Auth
 	createFile("project/backend/src/index.ts", `
 import express from 'express';
+import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
 
 const app = express();
 const port = 3001;
+const users = [{ email: 'test@example.com', password: bcrypt.hashSync('password123', 10) }];
 
-app.get('/', (req, res) => {
-  res.json({ message: 'Welcome to the Express backend!' });
+app.use(express.json());
+
+app.post('/login', (req, res) => {
+  const { email, password } = req.body;
+  const user = users.find(u => u.email === email);
+  if (user && bcrypt.compareSync(password, user.password)) {
+    const token = jwt.sign({ email: user.email }, 'secretKey', { expiresIn: '1h' });
+    res.json({ token });
+  } else {
+    res.status(401).json({ message: 'Invalid credentials' });
+  }
 });
 
 app.listen(port, () => {
-  console.log('Server is running on port:' ${port});
+  console.log(\'Server is running on port ${port}\');
 });
 `)
 
-	fmt.Println("Express backend with TypeScript created.")
+	fmt.Println("Express backend with JWT Authentication created.")
 }
 
-// Create Next.js TypeScript project structure
-func createNextJSTemplate() {
-	os.MkdirAll("project/frontend", os.ModePerm)
+// Set up Firebase Authentication in the frontend
+func setupAuth() {
+	fmt.Println("Setting up Firebase authentication...")
 
-	// Create package.json for Next.js with TypeScript
-	createFile("project/frontend/package.json", `{
-  "name": "next-app",
-  "version": "1.0.0",
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start"
-  },
-  "dependencies": {
-    "next": "12.0.0",
-    "react": "^18.0.0",
-    "react-dom": "^18.0.0",
-    "typescript": "^4.4.4",
-    "@types/react": "^18.0.0",
-    "@types/node": "^17.0.0"
-  }
-}`)
-	fmt.Println("Next.js frontend with TypeScript created.")
+	// Instructions for user to add Firebase project credentials
+	fmt.Println(`
+1. Go to https://console.firebase.google.com/ and create a new project.
+2. Set up Firebase Authentication in the Firebase console.
+3. Replace the placeholder values in src/firebaseConfig.ts with your Firebase project's API key, authDomain, and other details.
+`)
 }
 
 // Set up Prisma and the database
@@ -319,7 +424,7 @@ EXPOSE 3000
 CMD ["npm", "run", "dev"]
 `)
 
-	// Updated Docker Compose file with PostgreSQL configuration
+	// Docker Compose file
 	createFile("project/docker-compose.yml", `
 version: "3.9"
 services:
@@ -341,7 +446,7 @@ services:
       - "10001:5432"
 `)
 
-	fmt.Println("Docker files created with PostgreSQL configuration.")
+	fmt.Println("Docker files created.")
 }
 
 // Helper function to create files
@@ -354,4 +459,29 @@ func createFile(path string, content string) {
 	defer file.Close()
 
 	file.WriteString(content)
+}
+
+// Automatically run npm install for frontend and backend
+func runInstallations() {
+	fmt.Println("Running installations for frontend and backend...")
+
+	// Run npm install in frontend
+	frontendCmd := exec.Command("npm", "install")
+	frontendCmd.Dir = "project/frontend"
+	err := frontendCmd.Run()
+	if err != nil {
+		fmt.Println("Error installing frontend dependencies:", err)
+	} else {
+		fmt.Println("Frontend dependencies installed.")
+	}
+
+	// Run npm install in backend
+	backendCmd := exec.Command("npm", "install")
+	backendCmd.Dir = "project/backend"
+	err = backendCmd.Run()
+	if err != nil {
+		fmt.Println("Error installing backend dependencies:", err)
+	} else {
+		fmt.Println("Backend dependencies installed.")
+	}
 }
